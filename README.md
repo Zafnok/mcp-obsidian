@@ -1,53 +1,80 @@
-# Obsidian Model Context Protocol
+# Obsidian MCP Extended
 
-[![smithery badge](https://smithery.ai/badge/mcp-obsidian)](https://smithery.ai/protocol/mcp-obsidian)
+![smithery badge](https://smithery.ai/badge/mcp-obsidian.svg)
 
-This is a connector to allow Claude Desktop (or any MCP client) to read and search any directory containing Markdown notes (such as an Obsidian vault).
+> This is a fork of [smithery-ai/mcp-obsidian](https://github.com/smithery-ai/mcp-obsidian) with added **write support** functionality.
+
+This connector allows Claude Desktop, Cursor, or any MCP client to read, search, and now **write to** any directory containing Markdown notes (such as an Obsidian vault).
+
+## What's New in This Fork
+
+This fork adds a critical new feature to the original MCP server:
+
+- **`write_note` functionality**: Allows AI assistants to create and update notes in your Obsidian vault
+- Perfect for enabling long-term memory for your AI assistants
+- Maintains all the security features of the original implementation
+- Full backwards compatibility with the original project
 
 ## Installation
 
-Make sure Claude Desktop and `npm` is installed.
+Make sure Claude Desktop/Cursor and `npm` are installed.
 
-### Installing via Smithery
+### Installing from Source (Recommended for write support)
 
-To install Obsidian Model Context Protocol for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/mcp-obsidian):
+To install this enhanced version with write support:
+
+```bash
+git clone https://github.com/Zafnok/mcp-obsidian-extended.git
+cd mcp-obsidian-extended
+npm install
+npm run build
+```
+
+Then configure Cursor or Claude to use this version by pointing to the local build:
+
+1. Open Cursor Settings (Cmd+Shift+J) or Claude Desktop settings
+2. Go to the MCP tab
+3. Add a new MCP server with:
+   - Name: Obsidian Extended
+   - Type: stdio
+   - Command: `node /path/to/mcp-obsidian-extended/dist/index.js /path/to/your/vault`
+
+### Installing Original Version via Smithery
+
+To install the original Obsidian Model Context Protocol (without write support):
 
 ```bash
 npx @smithery/cli install mcp-obsidian --client claude
 ```
 
-Then, restart Claude Desktop and you should see the following MCP tools listed:
+## Available Tools
 
-![image](./images/mcp-tools.png)
+This MCP server provides the following tools:
 
-### Usage with VS Code
+### 1. `read_notes`
+Read the contents of multiple notes. Each note's content is returned with its path as a reference.
 
-For quick installation, use one of the one-click install buttons below:
+### 2. `search_notes`
+Searches for a note by its name. The search is case-insensitive and matches partial names. Queries can also be a valid regex.
 
-[![Install with NPX in VS Code](https://img.shields.io/badge/VS_Code-NPM-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=obsidian&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22vaultPath%22%2C%22description%22%3A%22Path%20to%20Obsidian%20vault%22%7D%5D&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22mcp-obsidian%22%2C%22%24%7Binput%3AvaultPath%7D%22%5D%7D) [![Install with NPX in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-NPM-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=obsidian&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22vaultPath%22%2C%22description%22%3A%22Path%20to%20Obsidian%20vault%22%7D%5D&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22mcp-obsidian%22%2C%22%24%7Binput%3AvaultPath%7D%22%5D%7D&quality=insiders)
+### 3. `write_note` (New in this fork!)
+Write content to a note in the Obsidian vault. If the note doesn't exist, it will be created by default.
 
-For manual installation, add the following JSON block to your User Settings (JSON) file in VS Code. You can do this by pressing `Ctrl + Shift + P` and typing `Preferences: Open User Settings (JSON)`.
-
-Optionally, you can add it to a file called `.vscode/mcp.json` in your workspace. This will allow you to share the configuration with others.
-
-> Note that the `mcp` key is not needed in the `.vscode/mcp.json` file.
-
+Example usage:
 ```json
 {
-  "mcp": {
-    "inputs": [
-      {
-        "type": "promptString",
-        "id": "vaultPath",
-        "description": "Path to Obsidian vault"
-      }
-    ],
-    "servers": {
-      "obsidian": {
-        "command": "npx",
-        "args": ["-y", "mcp-obsidian", "${input:vaultPath}"]
-      }
-    }
-  }
+  "path": "folder/new-note.md",
+  "content": "# My New Note\n\nThis is the content of my note.",
+  "createIfNotExists": true
 }
 ```
+
+## Credits
+
+- Original implementation by [Henry Mao](https://calclavia.com) and [smithery-ai](https://github.com/smithery-ai)
+- Write support functionality added by Nicholas Wentz ([@Zafnok](https://github.com/Zafnok))
+- All original licensing and permissions apply
+
+## License
+
+AGPL-3.0

@@ -124,14 +124,21 @@ const SearchNotesArgsSchema = z.object({
   query: z.string(),
 })
 
+// Add schema for writing notes
+const WriteNoteArgsSchema = z.object({
+  path: z.string().describe("The path to the note file relative to the vault root"),
+  content: z.string().describe("The content to write to the note"),
+  createIfNotExists: z.boolean().default(true).describe("Create the note if it does not exist"),
+})
+
 const ToolInputSchema = ToolSchema.shape.inputSchema
 type ToolInput = z.infer<typeof ToolInputSchema>
 
 // Server setup
 const server = new Server(
   {
-    name: "mcp-obsidian",
-    version: "1.0.0",
+    name: "mcp-obsidian-extended",
+    version: "1.1.0",
   },
   {
     capabilities: {
@@ -207,6 +214,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           "that match the query.",
         inputSchema: zodToJsonSchema(SearchNotesArgsSchema) as ToolInput,
       },
+      // Add new write_note tool
+      {
+        name: "write_note",
+        description:
+          "Write content to a note in the Obsidian vault. If the note doesn't exist, " +
+          "it will be created by default. Returns success or error message.",
+        inputSchema: zodToJsonSchema(WriteNoteArgsSchema) as ToolInput,
+      },
     ],
   }
 })
@@ -263,6 +278,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                   : ""),
             },
           ],
+        }
+      }
+      // Add handler for write_note
+      case "write_note": {
+        const parsed = WriteNoteArgsSchema.safeParse(args)
+        if (!parsed.success) {
+          throw new Error(`Invalid arguments for write_note: ${parsed.error}`)
+        }
+        
+        const { path: notePath, content, createIfNotExists } = parsed.data;
+        
+        try {
+          // Prepare the full path
+          const fullPath = path.join(vaultDirectories[0], notePath);
+          const validPath = await validatePath(fullPath);
+          
+          // Create parent directories if they don't exist
+          const directory = path.dirname(validPath);
+          await fs.mkdir(directory, { recursive: true });
+          
+          // Check if file exists
+          let fileExists = false;
+          try {
+            await fs.access(validPath);
+            fileExists = true;
+          } catch {
+            // File doesn't exist
+            if (!createIfNotExists) {
+              throw new Error(`File does not exist: ${notePath}`);
+            }
+          }
+          
+          // Write to file
+          await fs.writeFile(validPath, content, 'utf8');
+          
+          return {
+            content: [{ 
+              type: "text", 
+              text: `Successfully ${fileExists ? 'updated' : 'created'} note: ${notePath}` 
+            }],
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to write note: ${errorMessage}`);
         }
       }
       default:
