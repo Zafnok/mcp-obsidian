@@ -1,7 +1,5 @@
 # Obsidian MCP Extended
 
-![smithery badge](https://smithery.ai/badge/mcp-obsidian.svg)
-
 > This is a fork of [smithery-ai/mcp-obsidian](https://github.com/smithery-ai/mcp-obsidian) with added **write support** functionality.
 
 This connector allows Claude Desktop, Cursor, or any MCP client to read, search, and now **write to** any directory containing Markdown notes (such as an Obsidian vault).
