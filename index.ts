@@ -191,6 +191,33 @@ async function searchNotes(query: string): Promise<string[]> {
             matches = keywords.some(keyword => filename.includes(keyword))
           }
           
+          // If still no match, search the file contents
+          if (!matches) {
+            try {
+              const content = await fs.readFile(fullPath, 'utf-8');
+              const contentLower = content.toLowerCase();
+              
+              // Try exact phrase match first
+              if (contentLower.includes(query.toLowerCase())) {
+                matches = true;
+              } 
+              // Then try keyword matching
+              else if (keywords.length > 0) {
+                // Check if all keywords are present (AND logic)
+                const allKeywordsMatch = keywords.every(keyword => contentLower.includes(keyword));
+                
+                // Check if any keyword is present (OR logic)
+                const anyKeywordMatches = keywords.some(keyword => contentLower.includes(keyword));
+                
+                // Prioritize all-keyword matches, but also include any-keyword matches
+                matches = allKeywordsMatch || anyKeywordMatches;
+              }
+            } catch (error) {
+              // Skip files we can't read
+              console.error(`Error reading file ${fullPath}:`, error);
+            }
+          }
+          
           if (matches) {
             // Turn into relative path
             results.push(fullPath.replace(basePath, ""))
@@ -226,10 +253,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "search_notes",
         description:
-          "Searches for a note by its name. The search " +
-          "is case-insensitive and matches partial names. " +
-          "Queries can also be a valid regex. Returns paths of the notes " +
-          "that match the query.",
+          "Searches for notes by name and content. The search " +
+          "is case-insensitive and matches partial text. " +
+          "Can search both filenames and contents of notes. " +
+          "Queries can include multiple keywords for broader matches. " +
+          "Returns paths of the notes that match the query.",
         inputSchema: zodToJsonSchema(SearchNotesArgsSchema) as ToolInput,
       },
       // Add new write_note tool
