@@ -138,7 +138,7 @@ type ToolInput = z.infer<typeof ToolInputSchema>
 const server = new Server(
   {
     name: "mcp-obsidian-extended",
-    version: "1.1.0",
+    version: "1.2.0",
   },
   {
     capabilities: {
@@ -154,6 +154,9 @@ const server = new Server(
  */
 async function searchNotes(query: string): Promise<string[]> {
   const results: string[] = []
+  
+  // Split query into keywords for more flexible searching
+  const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 0)
 
   async function search(basePath: string, currentPath: string) {
     const entries = await fs.readdir(currentPath, { withFileTypes: true })
@@ -165,18 +168,33 @@ async function searchNotes(query: string): Promise<string[]> {
         // Validate each path before processing
         await validatePath(fullPath)
 
-        let matches = entry.name.toLowerCase().includes(query.toLowerCase())
-        try {
-          matches =
-            matches ||
-            new RegExp(query.replace(/[*]/g, ".*"), "i").test(entry.name)
-        } catch {
-          // Ignore invalid regex
-        }
-
-        if (entry.name.endsWith(".md") && matches) {
-          // Turn into relative path
-          results.push(fullPath.replace(basePath, ""))
+        if (entry.name.endsWith(".md")) {
+          // Check if file matches any of the keywords (implicit OR)
+          let matches = false
+          const filename = entry.name.toLowerCase()
+          
+          // Try exact match first
+          if (filename.includes(query.toLowerCase())) {
+            matches = true
+          } 
+          // Try regex match if possible
+          else {
+            try {
+              matches = new RegExp(query.replace(/[*]/g, ".*"), "i").test(entry.name)
+            } catch {
+              // Ignore invalid regex
+            }
+          }
+          
+          // If not matched yet, try each keyword separately (with ranking by # of matches)
+          if (!matches && keywords.length > 0) {
+            matches = keywords.some(keyword => filename.includes(keyword))
+          }
+          
+          if (matches) {
+            // Turn into relative path
+            results.push(fullPath.replace(basePath, ""))
+          }
         }
 
         if (entry.isDirectory()) {
@@ -236,11 +254,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!parsed.success) {
           throw new Error(`Invalid arguments for read_notes: ${parsed.error}`)
         }
+        
+        // Process each path in parallel for efficiency
         const results = await Promise.all(
           parsed.data.paths.map(async (filePath: string) => {
             try {
+              // Handle paths with or without leading slash consistently
+              const normalizedPath = filePath.startsWith("/") ? filePath.substring(1) : filePath
               const validPath = await validatePath(
-                path.join(vaultDirectories[0], filePath)
+                path.join(vaultDirectories[0], normalizedPath)
               )
               const content = await fs.readFile(validPath, "utf-8")
               return `${filePath}:\n${content}\n`
