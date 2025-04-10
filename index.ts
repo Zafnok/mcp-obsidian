@@ -131,6 +131,11 @@ const WriteNoteArgsSchema = z.object({
   createIfNotExists: z.boolean().default(true).describe("Create the note if it does not exist"),
 })
 
+// Add schema for deleting notes
+const DeleteNoteArgsSchema = z.object({
+  path: z.string().describe("The path to the note file to delete, relative to the vault root"),
+})
+
 const ToolInputSchema = ToolSchema.shape.inputSchema
 type ToolInput = z.infer<typeof ToolInputSchema>
 
@@ -268,6 +273,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           "it will be created by default. Returns success or error message.",
         inputSchema: zodToJsonSchema(WriteNoteArgsSchema) as ToolInput,
       },
+      // Add new delete_note tool
+      {
+        name: "delete_note",
+        description:
+          "Delete a note from the Obsidian vault. Returns success or error message.",
+        inputSchema: zodToJsonSchema(DeleteNoteArgsSchema) as ToolInput,
+      },
     ],
   }
 })
@@ -372,6 +384,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           throw new Error(`Failed to write note: ${errorMessage}`);
+        }
+      }
+      // Add handler for delete_note
+      case "delete_note": {
+        const parsed = DeleteNoteArgsSchema.safeParse(args)
+        if (!parsed.success) {
+          throw new Error(`Invalid arguments for delete_note: ${parsed.error}`)
+        }
+        
+        const { path: notePath } = parsed.data;
+        
+        try {
+          // Prepare the full path
+          const fullPath = path.join(vaultDirectories[0], notePath);
+          const validPath = await validatePath(fullPath);
+          
+          // Check if file exists
+          try {
+            await fs.access(validPath);
+          } catch {
+            throw new Error(`File does not exist: ${notePath}`);
+          }
+          
+          // Delete the file
+          await fs.unlink(validPath);
+          
+          return {
+            content: [{ 
+              type: "text", 
+              text: `Successfully deleted note: ${notePath}` 
+            }],
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to delete note: ${errorMessage}`);
         }
       }
       default:

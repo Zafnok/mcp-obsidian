@@ -2,13 +2,14 @@
 
 > This is a fork of [smithery-ai/mcp-obsidian](https://github.com/smithery-ai/mcp-obsidian) with added **write support** functionality.
 
-This connector allows Claude Desktop, Cursor, or any MCP client to read, search, and now **write to** any directory containing Markdown notes (such as an Obsidian vault).
+This connector allows Claude Desktop, Cursor, or any MCP client to read, search, write to, and now **delete notes from** any directory containing Markdown notes (such as an Obsidian vault).
 
 ## What's New in This Fork
 
-This fork adds a critical new feature to the original MCP server:
+This fork adds critical new features to the original MCP server:
 
 - **`write_note` functionality**: Allows AI assistants to create and update notes in your Obsidian vault
+- **`delete_note` functionality**: Allows AI assistants to delete notes from your Obsidian vault
 - Perfect for enabling long-term memory for your AI assistants
 - Maintains all the security features of the original implementation
 - Full backwards compatibility with the original project
@@ -64,6 +65,16 @@ Example usage:
   "path": "folder/new-note.md",
   "content": "# My New Note\n\nThis is the content of my note.",
   "createIfNotExists": true
+}
+```
+
+### 4. `delete_note` (New in this fork!)
+Delete a note from the Obsidian vault. Returns success or error message.
+
+Example usage:
+```json
+{
+  "path": "folder/note-to-delete.md"
 }
 ```
 
